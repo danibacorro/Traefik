@@ -1,39 +1,34 @@
 services:
-
   traefik:
     image: traefik:v2.11
     restart: unless-stopped
     command:
       - "--api.dashboard=true"
-      - "--api.insecure=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--certificatesresolvers.le.acme.httpchallenge=true"
-      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.le.acme.email=danibacorro@gmail.com"
-      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./acme.json:/letsencrypt/acme.json
+      - ./certs:/certs:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
     networks:
       - web
     labels:
       - "traefik.enable=true"
+      # Autorización + Cabeceras + Rate Limit
       - "traefik.http.routers.traefik-dashboard.rule=Host(`dashboard.dani.gonzalonazareno.org`)"
       - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.traefik-dashboard.tls.certresolver=le"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
-
-      #Autenticación dashboard
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=**BORRADO**"
-      - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=dani:$$apr1$$GHluLg7S$$aOC0vhv9hHZz3.Ri0m1kf."
+      - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth,secure-headers@file,limit-peticiones@file"
 
   web:
     build: ./app
@@ -42,11 +37,14 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`www.dani.gonzalonazareno.org`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=le"
-      - "traefik.http.services.web.loadbalancer.server.port=80"
+      - "traefik.http.routers.web-router.rule=Host(`www.dani.gonzalonazareno.org`)"
+      - "traefik.http.routers.web-router.entrypoints=websecure"
+      - "traefik.http.routers.web-router.tls=true"
+      - "traefik.http.services.web-service.loadbalancer.server.port=80"
+      # Cabeceras + Rate Limit
+      - "traefik.http.routers.web-router.middlewares=secure-headers@file,limit-peticiones@file"
 
 networks:
   web:
     driver: bridge
+

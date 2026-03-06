@@ -1,0 +1,25 @@
+http:
+  middlewares:
+    # Cabeceras
+    secure-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+
+    # Rate Limit
+    limit-peticiones:
+      rateLimit:
+        average: 10
+        burst: 20
+
+tls:
+  certificates:
+    - certFile: /certs/www.crt
+      keyFile: /certs/www.key
+    - certFile: /certs/dashboard.crt
+      keyFile: /certs/dashboard.key
+
