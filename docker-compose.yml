@@ -11,6 +11,10 @@ services:
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--accesslog.format=common"
+      - "--log.level=INFO"
     ports:
       - "80:80"
       - "443:443"
@@ -18,11 +22,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./certs:/certs:ro
       - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - /var/log/traefik:/var/log/traefik
     networks:
       - web
     labels:
       - "traefik.enable=true"
-      # Autorización + Cabeceras + Rate Limit
+      # Dashboard con Auth + Seguridad + Rate Limit
       - "traefik.http.routers.traefik-dashboard.rule=Host(`dashboard.dani.gonzalonazareno.org`)"
       - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
@@ -41,10 +46,9 @@ services:
       - "traefik.http.routers.web-router.entrypoints=websecure"
       - "traefik.http.routers.web-router.tls=true"
       - "traefik.http.services.web-service.loadbalancer.server.port=80"
-      # Cabeceras + Rate Limit
+      # Web con Seguridad + Rate Limit
       - "traefik.http.routers.web-router.middlewares=secure-headers@file,limit-peticiones@file"
 
 networks:
   web:
     driver: bridge
-
